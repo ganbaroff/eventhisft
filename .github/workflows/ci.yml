@@ -1,0 +1,110 @@
+name: OPSBOARD CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    name: Backend — build + test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: opsboard
+          POSTGRES_PASSWORD: opsboard123
+          POSTGRES_DB: opsboard
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    env:
+      DATABASE_URL: postgresql://opsboard:opsboard123@localhost:5432/opsboard
+      JWT_SECRET: ci-test-secret-32-chars-minimum!!
+      JWT_REFRESH_SECRET: ci-refresh-secret-32-chars-ok!!!
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Run migration on CI DB
+        run: psql $DATABASE_URL -f prisma/migrations/001_init/migration.sql
+
+      - name: Seed CI DB
+        run: node -e "
+          const {Pool}=require('pg');
+          const bcrypt=require('bcryptjs');
+          const {randomUUID}=require('crypto');
+          const pool=new Pool({connectionString:process.env.DATABASE_URL});
+          const run=async()=>{
+            const orgId=randomUUID(),projId=randomUUID(),deptId=randomUUID();
+            const userId=randomUUID(),shiftId=randomUUID(),svcId=randomUUID();
+            await pool.query('INSERT INTO \"Organization\"(id,name,slug) VALUES(\$1,\$2,\$3)',[orgId,'CI Org','ci-org']);
+            await pool.query('INSERT INTO \"Project\"(id,\"organizationId\",name,slug,\"isActive\") VALUES(\$1,\$2,\$3,\$4,true)',[projId,orgId,'CI Project','ci-proj']);
+            await pool.query('INSERT INTO \"Department\"(id,\"projectId\",name,\"isActive\") VALUES(\$1,\$2,\$3,true)',[deptId,projId,'CI Dept']);
+            await pool.query('INSERT INTO \"Zone\"(id,\"projectId\",name,\"isActive\") VALUES(\$1,\$2,\$3,true)',[randomUUID(),projId,'CI Zone']);
+            await pool.query('INSERT INTO \"Service\"(id,\"departmentId\",name,\"isActive\") VALUES(\$1,\$2,\$3,true)',[svcId,deptId,'CI Service']);
+            await pool.query('INSERT INTO \"User\"(id,\"organizationId\",email,\"passwordHash\",\"fullName\",role,\"isActive\") VALUES(\$1,\$2,\$3,\$4,\$5,\$6,true)',[userId,orgId,'admin@opsboard.local',bcrypt.hashSync('admin123',10),'CI Admin','ADMIN']);
+            await pool.query('INSERT INTO \"User\"(id,\"organizationId\",email,\"passwordHash\",\"fullName\",role,\"isActive\") VALUES(\$1,\$2,\$3,\$4,\$5,\$6,true)',[randomUUID(),orgId,'coord@opsboard.local',bcrypt.hashSync('coord123',10),'CI Coord','COORDINATOR']);
+            await pool.query('INSERT INTO \"User\"(id,\"organizationId\",email,\"passwordHash\",\"fullName\",role,\"isActive\") VALUES(\$1,\$2,\$3,\$4,\$5,\$6,true)',[randomUUID(),orgId,'manager@opsboard.local',bcrypt.hashSync('manager123',10),'CI Manager','SENIOR_MANAGER']);
+            await pool.query('INSERT INTO \"Shift\"(id,\"projectId\",\"departmentId\",name,status,\"startsAt\") VALUES(\$1,\$2,\$3,\$4,\'PLANNED\',NOW())',[shiftId,projId,deptId,'CI Shift']);
+          };
+          run().catch(e=>{console.error(e);process.exit(1)}).finally(()=>pool.end());
+        "
+
+      - name: Run tests
+        run: npm test
+
+  frontend:
+    name: Frontend — typecheck + build + test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+      - name: Run tests
+        run: npm test
+
+      - name: Production build
+        run: npm run build
+        env:
+          VITE_API_URL: https://placeholder.railway.app

@@ -1,0 +1,287 @@
+// OPSBOARD — Prisma Schema
+// All MVP entities. Append-only audit trail. No destructive operations.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  SENIOR_MANAGER
+  SERVICE_MANAGER
+  COORDINATOR
+}
+
+enum ShiftStatus {
+  PLANNED
+  ACTIVE
+  HANDOVER
+  CLOSED
+}
+
+enum OperationStatus {
+  DRAFT
+  SUBMITTED
+  LOCKED
+}
+
+enum IncidentType {
+  LOST_AND_FOUND
+  COMPLAINT
+  FLOW_DISRUPTION
+  OTHER
+}
+
+enum IncidentStatus {
+  DRAFT
+  ACTIVE
+  ESCALATED
+  RESOLVED
+  ARCHIVED
+}
+
+enum AlertStatus {
+  TRIGGERED
+  ACKNOWLEDGED
+  RESOLVED
+}
+
+enum SyncState {
+  SYNCED
+  PENDING_CONFIRMATION
+  REJECTED
+}
+
+// ─── Core Entities ────────────────────────────────────────────────────────────
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users    User[]
+  projects Project[]
+}
+
+model Project {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  slug           String
+  description    String?
+  isActive       Boolean  @default(true)
+  startsAt       DateTime?
+  endsAt         DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  departments  Department[]
+  shifts       Shift[]
+  incidents    Incident[]
+  alerts       Alert[]
+
+  @@unique([organizationId, slug])
+}
+
+model Department {
+  id          String   @id @default(cuid())
+  projectId   String
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project  Project   @relation(fields: [projectId], references: [id])
+  shifts   Shift[]
+  services Service[]
+}
+
+model Zone {
+  id          String   @id @default(cuid())
+  projectId   String
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  operations Operation[]
+  incidents  Incident[]
+
+  @@index([projectId])
+}
+
+model Service {
+  id           String   @id @default(cuid())
+  departmentId String
+  name         String
+  description  String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  department   Department    @relation(fields: [departmentId], references: [id])
+  operations   Operation[]
+  incidents    Incident[]
+  userServices UserService[]
+}
+
+model User {
+  id             String   @id @default(cuid())
+  organizationId String
+  email          String   @unique
+  passwordHash   String
+  fullName       String
+  role           UserRole @default(COORDINATOR)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization     Organization  @relation(fields: [organizationId], references: [id])
+  userServices     UserService[]
+  shiftsOpened     Shift[]       @relation("ShiftOpenedBy")
+  shiftsClosed     Shift[]       @relation("ShiftClosedBy")
+  operations       Operation[]
+  incidentsCreated Incident[]    @relation("IncidentCreatedBy")
+  incidentsResolved Incident[]   @relation("IncidentResolvedBy")
+  incidentNotes    IncidentNote[]
+  alertsAcknowledged Alert[]
+  auditEvents      AuditEvent[]
+}
+
+model UserService {
+  userId    String
+  serviceId String
+  assignedAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id])
+  service Service @relation(fields: [serviceId], references: [id])
+
+  @@id([userId, serviceId])
+}
+
+// ─── Operational Entities ─────────────────────────────────────────────────────
+
+model Shift {
+  id           String      @id @default(cuid())
+  projectId    String
+  departmentId String
+  name         String
+  status       ShiftStatus @default(PLANNED)
+  startsAt     DateTime
+  endsAt       DateTime?
+  openedById   String?
+  closedById   String?
+  openedAt     DateTime?
+  closedAt     DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  project    Project    @relation(fields: [projectId], references: [id])
+  department Department @relation(fields: [departmentId], references: [id])
+  openedBy   User?      @relation("ShiftOpenedBy", fields: [openedById], references: [id])
+  closedBy   User?      @relation("ShiftClosedBy", fields: [closedById], references: [id])
+  operations Operation[]
+}
+
+model Operation {
+  id          String          @id @default(cuid())
+  shiftId     String
+  serviceId   String
+  zoneId      String?
+  createdById String
+  status      OperationStatus @default(DRAFT)
+  notes       String?
+  syncState   SyncState       @default(SYNCED)
+  submittedAt DateTime?
+  lockedAt    DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  shift     Shift   @relation(fields: [shiftId], references: [id])
+  service   Service @relation(fields: [serviceId], references: [id])
+  zone      Zone?   @relation(fields: [zoneId], references: [id])
+  createdBy User    @relation(fields: [createdById], references: [id])
+}
+
+model Incident {
+  id          String         @id @default(cuid())
+  projectId   String
+  zoneId      String?
+  serviceId   String?
+  createdById String
+  type        IncidentType
+  status      IncidentStatus @default(ACTIVE)
+  title       String
+  description String?
+  syncState   SyncState      @default(SYNCED)
+  resolvedById String?
+  resolvedAt  DateTime?
+  archivedAt  DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  project    Project        @relation(fields: [projectId], references: [id])
+  zone       Zone?          @relation(fields: [zoneId], references: [id])
+  service    Service?       @relation(fields: [serviceId], references: [id])
+  createdBy  User           @relation("IncidentCreatedBy", fields: [createdById], references: [id])
+  resolvedBy User?          @relation("IncidentResolvedBy", fields: [resolvedById], references: [id])
+  notes      IncidentNote[]
+  alerts     Alert[]
+}
+
+model IncidentNote {
+  id         String   @id @default(cuid())
+  incidentId String
+  authorId   String
+  body       String
+  createdAt  DateTime @default(now())
+
+  // Append-only. Never updated. Never deleted.
+  incident Incident @relation(fields: [incidentId], references: [id])
+  author   User     @relation(fields: [authorId], references: [id])
+}
+
+model Alert {
+  id               String      @id @default(cuid())
+  projectId        String
+  incidentId       String?
+  status           AlertStatus @default(TRIGGERED)
+  message          String
+  acknowledgedById String?
+  acknowledgedAt   DateTime?
+  resolvedAt       DateTime?
+  createdAt        DateTime    @default(now())
+
+  project        Project  @relation(fields: [projectId], references: [id])
+  incident       Incident? @relation(fields: [incidentId], references: [id])
+  acknowledgedBy User?    @relation(fields: [acknowledgedById], references: [id])
+}
+
+model AuditEvent {
+  id         String   @id @default(cuid())
+  entityType String
+  entityId   String
+  actorId    String
+  action     String
+  payload    Json?
+  createdAt  DateTime @default(now())
+
+  // Append-only. Never updated. Never deleted.
+  actor User @relation(fields: [actorId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([actorId])
+  @@index([createdAt])
+}

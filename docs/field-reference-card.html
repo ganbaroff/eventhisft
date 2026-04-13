@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OPSBOARD — Field Reference</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@600;800&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Syne', sans-serif;
+    background: #fff;
+    color: #0a0e1a;
+    padding: 24px;
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  .header {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    border-bottom: 3px solid #0a0e1a;
+    padding-bottom: 12px;
+    margin-bottom: 24px;
+  }
+
+  .logo {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 22px;
+    letter-spacing: 0.15em;
+  }
+
+  .subtitle {
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    color: #4a566e;
+  }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  .card {
+    border: 1.5px solid #1e2a44;
+    border-radius: 8px;
+    padding: 16px;
+  }
+
+  .card h3 {
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #4a566e;
+    margin-bottom: 10px;
+  }
+
+  .step {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    margin-bottom: 8px;
+    font-size: 13px;
+  }
+
+  .step-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 11px;
+    background: #0a0e1a;
+    color: #fff;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .tag {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .tag-active   { background: rgba(61,127,255,0.1);  color: #3d7fff; border: 1px solid rgba(61,127,255,0.3); }
+  .tag-escalate { background: rgba(255,71,87,0.1);   color: #ff4757; border: 1px solid rgba(255,71,87,0.3); }
+  .tag-ok       { background: rgba(46,213,115,0.1);  color: #1a9e57; border: 1px solid rgba(46,213,115,0.3); }
+  .tag-warn     { background: rgba(255,165,2,0.1);   color: #cc7a00; border: 1px solid rgba(255,165,2,0.3); }
+
+  .full { grid-column: 1 / -1; }
+
+  .rules { margin-top: 8px; }
+  .rule {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 12px;
+    padding: 6px 0;
+    border-bottom: 1px solid #eee;
+  }
+  .rule:last-child { border-bottom: none; }
+  .rule-icon { font-size: 14px; flex-shrink: 0; }
+
+  .credentials {
+    background: #f4f3ff;
+    border: 1.5px solid #c4b8ff;
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-top: 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+  }
+
+  .credentials input {
+    width: 100%;
+    background: #fff;
+    border: 1px solid #c4b8ff;
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    margin-top: 4px;
+  }
+
+  @media print {
+    body { padding: 12px; }
+    .grid { gap: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">OPSBOARD</div>
+  <div class="subtitle">Field Coordinator Reference · WUF13</div>
+</div>
+
+<div class="grid">
+
+  <!-- Incident flow -->
+  <div class="card">
+    <h3>Create an Incident</h3>
+    <div class="step"><div class="step-num">1</div><div>Go to <strong>INCIDENTS</strong> in sidebar</div></div>
+    <div class="step"><div class="step-num">2</div><div>Tap <strong>+ NEW INCIDENT</strong></div></div>
+    <div class="step"><div class="step-num">3</div><div>Select <strong>Type</strong>, fill <strong>Title</strong></div></div>
+    <div class="step"><div class="step-num">4</div><div>Pick <strong>Zone</strong> and <strong>Service</strong> if known</div></div>
+    <div class="step"><div class="step-num">5</div><div>Tap <strong>SUBMIT INCIDENT</strong></div></div>
+    <div style="margin-top:10px; font-size:12px; color:#4a566e;">
+      Offline? Tap submit anyway — saves as local draft automatically.
+    </div>
+  </div>
+
+  <!-- Add note -->
+  <div class="card">
+    <h3>Add a Note to Incident</h3>
+    <div class="step"><div class="step-num">1</div><div>Open the incident from INCIDENTS list</div></div>
+    <div class="step"><div class="step-num">2</div><div>Scroll to <strong>TIMELINE</strong> at bottom</div></div>
+    <div class="step"><div class="step-num">3</div><div>Type your update in the text box</div></div>
+    <div class="step"><div class="step-num">4</div><div>Tap <strong>ADD</strong></div></div>
+    <div style="margin-top:10px; font-size:12px; color:#4a566e;">
+      Notes are permanent. They cannot be edited or deleted.
+    </div>
+  </div>
+
+  <!-- Operations -->
+  <div class="card">
+    <h3>Log an Operation Entry</h3>
+    <div class="step"><div class="step-num">1</div><div>Go to <strong>OPERATIONS</strong> in sidebar</div></div>
+    <div class="step"><div class="step-num">2</div><div>Tap <strong>+ LOG OPERATION</strong></div></div>
+    <div class="step"><div class="step-num">3</div><div>Select your <strong>Service</strong></div></div>
+    <div class="step"><div class="step-num">4</div><div>Add <strong>Notes</strong> if needed</div></div>
+    <div class="step"><div class="step-num">5</div><div>Tap <strong>SUBMIT</strong></div></div>
+    <div style="margin-top:10px; font-size:12px; color:#4a566e;">
+      Operations require an active shift. If you see "No active shift" — contact your manager.
+    </div>
+  </div>
+
+  <!-- Offline -->
+  <div class="card">
+    <h3>When Offline</h3>
+    <div class="step"><div class="step-num">1</div><div>Topbar shows <span class="tag tag-warn">OFFLINE</span></div></div>
+    <div class="step"><div class="step-num">2</div><div>Keep working — drafts save locally</div></div>
+    <div class="step"><div class="step-num">3</div><div>When back online — tap <strong>DRAFTS</strong> in sidebar</div></div>
+    <div class="step"><div class="step-num">4</div><div>Verify all drafts show <span class="tag tag-ok">SYNCED</span></div></div>
+    <div class="step"><div class="step-num">5</div><div>If any show <span class="tag tag-escalate">REJECTED</span> — tap RETRY</div></div>
+  </div>
+
+  <!-- Status meanings -->
+  <div class="card full">
+    <h3>Incident Status Meanings</h3>
+    <div class="rules">
+      <div class="rule">
+        <span class="rule-icon"><span class="tag tag-active">ACTIVE</span></span>
+        <span>Incident is open and being handled. Add notes to update the timeline.</span>
+      </div>
+      <div class="rule">
+        <span class="rule-icon"><span class="tag tag-escalate">ESCALATED</span></span>
+        <span>Incident requires manager attention. Visible at top of NOW screen.</span>
+      </div>
+      <div class="rule">
+        <span class="rule-icon"><span class="tag tag-ok">RESOLVED</span></span>
+        <span>Incident closed by a manager. No further actions possible.</span>
+      </div>
+      <div class="rule">
+        <span class="rule-icon"><span class="tag tag-warn">DRAFT</span></span>
+        <span>Incident saved offline. Will sync automatically when connection restores.</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Credentials -->
+<div class="credentials">
+  <div style="font-weight:700; margin-bottom:10px; font-size:12px; text-transform:uppercase; letter-spacing:0.08em;">My Login Credentials</div>
+  <div style="margin-bottom:8px;">
+    <div style="font-size:10px; color:#666; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:2px;">URL</div>
+    <input type="text" placeholder="https://your-opsboard.vercel.app" />
+  </div>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+    <div>
+      <div style="font-size:10px; color:#666; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:2px;">Email</div>
+      <input type="text" placeholder="you@org.com" />
+    </div>
+    <div>
+      <div style="font-size:10px; color:#666; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:2px;">Password</div>
+      <input type="password" placeholder="••••••••" />
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
