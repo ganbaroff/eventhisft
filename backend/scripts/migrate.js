@@ -15,18 +15,22 @@ async function migrate() {
     await pool.query(sql)
     console.log('✅ Migration applied')
   } catch (e) {
-    if (e.message && (
-      e.message.includes('already exists') ||
-      e.message.includes('duplicate')
-    )) {
+    const msg = e.message || ''
+    if (msg.includes('already exists') || msg.includes('duplicate')) {
       console.log('✅ Schema already exists — skipping migration')
-    } else {
-      // Log but don't exit — partial state is recoverable
-      console.warn('⚠ Migration warning:', e.message.slice(0, 200))
+      return
     }
+    console.error('❌ Migration FAILED')
+    console.error('  code:', e.code)
+    console.error('  msg :', msg)
+    console.error('  detail:', e.detail)
+    console.error('  where :', e.where)
+    console.error('  position:', e.position)
+    console.error('  stack:', e.stack)
+    throw e
   }
 }
 
 migrate()
-  .catch(e => { console.error('Migration failed:', e.message); process.exit(1) })
+  .catch(e => { console.error('Migration runner exited with error'); process.exit(1) })
   .finally(() => pool.end())

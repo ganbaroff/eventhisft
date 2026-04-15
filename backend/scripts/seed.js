@@ -85,5 +85,12 @@ async function main() {
 }
 
 main()
-  .catch(e => { console.error('Seed failed:', e.message); process.exit(1) })
+  .catch(e => {
+    console.error('❌ Seed FAILED')
+    console.error('  code:', e.code)
+    console.error('  msg :', e.message)
+    console.error('  detail:', e.detail)
+    console.error('  stack:', e.stack)
+    process.exit(1)
+  })
   .finally(() => pool.end())
