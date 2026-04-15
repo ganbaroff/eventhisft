@@ -15,6 +15,7 @@ const mockUser = {
 const mockPrisma = {
   user: {
     findUnique: jest.fn(),
+    update: jest.fn(),
   },
 }
 
@@ -158,4 +159,56 @@ describe('AuthService', () => {
       )
     })
   })
+
+  // ── changePassword ────────────────────────────────────────────────────────
+
+  describe('changePassword()', () => {
+    it('changes password when current is correct', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue(mockUser)
+      ;(bcrypt.compare as jest.Mock).mockResolvedValue(true)
+      ;(bcrypt.hash as jest.Mock).mockResolvedValue('new-hashed-password')
+      mockPrisma.user.update.mockResolvedValue({ ...mockUser, passwordHash: 'new-hashed-password' })
+
+      const result = await service.changePassword(mockUser.id, 'correct', 'newpassword123')
+
+      expect(result).toHaveProperty('message')
+      expect(mockPrisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: mockUser.id } })
+      )
+    })
+
+    it('throws UnauthorizedException for wrong current password', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue(mockUser)
+      ;(bcrypt.compare as jest.Mock).mockResolvedValue(false)
+
+      await expect(
+        service.changePassword(mockUser.id, 'wrong', 'newpassword123')
+      ).rejects.toThrow(UnauthorizedException)
+    })
+
+    it('throws UnauthorizedException for nonexistent user', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue(null)
+
+      await expect(
+        service.changePassword('bad-id', 'any', 'newpassword123')
+      ).rejects.toThrow(UnauthorizedException)
+    })
+
+    it('hashes the new password before saving', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue(mockUser)
+      ;(bcrypt.compare as jest.Mock).mockResolvedValue(true)
+      ;(bcrypt.hash as jest.Mock).mockResolvedValue('hashed-new')
+      mockPrisma.user.update.mockResolvedValue(mockUser)
+
+      await service.changePassword(mockUser.id, 'correct', 'newpassword123')
+
+      expect(bcrypt.hash).toHaveBeenCalledWith('newpassword123', 10)
+      expect(mockPrisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ passwordHash: 'hashed-new' })
+        })
+      )
+    })
+  })
+
 })

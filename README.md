@@ -1,87 +1,76 @@
 # OPSBOARD
 
-Adaptive operations platform for live events and operational departments.
-
-## What this is
-
-OPSBOARD gives coordinators and managers a single operational source of truth during live event time.
-
-First use case: WUF13 / Guest Services.
+Operational platform for live events. Built for WUF13 Guest Services.
 
 ## Stack
+- **Backend**: NestJS + TypeScript + PostgreSQL
+- **Frontend**: React 18 + TypeScript + Vite + PWA
+- **Deploy**: Railway (backend) + Vercel (frontend)
 
-| Layer | Technology |
-|---|---|
-| Frontend | React 18 + TypeScript + Vite + PWA |
-| State | Zustand |
-| Offline | IndexedDB + Service Worker |
-| Backend | NestJS + TypeScript |
-| ORM | Prisma |
-| Database | PostgreSQL |
-| Deploy | Vercel (FE) + Railway (BE + DB) |
-| Auth | JWT (access + refresh) |
-
-## Project structure
-
-```
-opsboard/
-├── docs/                    # Project memory — source of truth
-│   ├── product-definition.md
-│   ├── mvp-scope.md
-│   ├── domain-model.md
-│   ├── workflow-rules.md
-│   ├── decisions.md
-│   ├── current-sprint.md
-│   ├── handoff.md
-│   ├── non-goals.md
-│   └── open-questions.md
-├── frontend/
-│   ├── src/
-│   │   ├── components/      # Shared UI components
-│   │   ├── pages/           # Screen-level components (NOW, Incidents, Operations, Admin)
-│   │   ├── hooks/           # Custom React hooks
-│   │   ├── store/           # Zustand stores
-│   │   ├── api/             # API client and request functions
-│   │   ├── types/           # TypeScript types/interfaces
-│   │   └── utils/           # Helpers, offline/IndexedDB utils
-│   ├── public/
-│   ├── vite.config.ts
-│   └── package.json
-└── backend/
-    ├── src/
-    │   ├── modules/         # Feature modules (auth, incidents, operations, shifts, admin)
-    │   ├── common/          # Guards, interceptors, decorators, filters
-    │   └── config/          # NestJS config, env validation
-    ├── prisma/
-    │   └── schema.prisma    # Database schema — all MVP entities
-    └── package.json
-```
-
-## MVP modules
-
-1. **NOW** — What requires attention right now
-2. **INCIDENTS** — Capture and manage operational exceptions
-3. **OPERATIONS** — Capture routine operational state
-4. **ADMIN** — Minimal user/zone/service management
-5. **OFFLINE** — Local draft capture with honest sync state
-
-## Quick start (development)
+## Quick Start
 
 ```bash
 # Backend
 cd backend
+cp .env.example .env     # fill DATABASE_URL, JWT_SECRET, JWT_REFRESH_SECRET
 npm install
-npx prisma generate
-npx prisma migrate dev
-npm run start:dev
+npm run start:dev        # http://localhost:3001
 
-# Frontend
+# Frontend (separate terminal)
 cd frontend
+cp .env.example .env     # set VITE_API_URL=http://localhost:3001
 npm install
-npm run dev
+npm run dev              # http://localhost:5173
 ```
 
-## Docs
+## Default accounts
+| Email | Password | Role |
+|-------|----------|------|
+| admin@opsboard.local | admin123 | Admin |
+| manager@opsboard.local | manager123 | Senior Manager |
+| coord@opsboard.local | coord123 | Coordinator |
 
-All architectural decisions, scope boundaries, and open questions are in `/docs`.
-Read `/docs/handoff.md` first when resuming work.
+> ⚠️ Change passwords on first login via the 🔑 button in the top bar.
+
+## Tests
+
+```bash
+cd backend && npm test        # 176 tests
+cd frontend && npm test       # 44 tests
+```
+
+## Deploy
+
+### Railway (backend)
+1. New project → Add PostgreSQL service
+2. Add GitHub service → select this repo
+3. Settings: Root Directory = `backend`
+4. Variables:
+```
+DATABASE_URL=<from postgres service>
+JWT_SECRET=<random 32 chars>
+JWT_REFRESH_SECRET=<random 32 chars>
+PORT=3001
+NODE_ENV=production
+```
+
+### Vercel (frontend)
+1. Import from GitHub → select this repo
+2. Root Directory: `frontend`
+3. Environment variable: `VITE_API_URL=https://your-railway-url`
+
+## Features
+- **NOW** — live operational status, escalated alerts, SSE real-time updates
+- **Incidents** — full lifecycle: ACTIVE → ESCALATED → RESOLVED → ARCHIVED
+- **Operations** — shift-scoped entries, offline draft capture
+- **Shifts** — PLANNED → ACTIVE → HANDOVER → CLOSED
+- **Admin** — users, zones, services, shift management
+- **Offline** — drafts saved locally, sync on reconnect
+- **PWA** — installable on mobile/tablet
+
+## Architecture
+See `docs/` for full documentation:
+- `docs/handoff.md` — complete feature list and status
+- `docs/deployment.md` — step-by-step deploy guide
+- `docs/shadow-test-checklist.md` — pre-launch checklist
+- `CLAUDE.md` — handoff notes for Claude Code
