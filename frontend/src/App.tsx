@@ -98,8 +98,23 @@ function AppShell() {
 
         <div className="app-topbar__user">
           <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>{user?.fullName}</span>
-          <button className="btn btn--ghost btn--sm" onClick={() => setShowPwd(true)}>🔑</button>
-          <button className="btn btn--ghost btn--sm" onClick={logout}>SIGN OUT</button>
+          <button
+            type="button"
+            className="btn btn--ghost btn--sm"
+            onClick={() => setShowPwd(true)}
+            aria-label="Change password"
+            title="Change password"
+          >
+            <span aria-hidden="true">🔑</span>
+          </button>
+          <button
+            type="button"
+            className="btn btn--ghost btn--sm"
+            onClick={logout}
+            aria-label="Sign out"
+          >
+            SIGN OUT
+          </button>
         </div>
       </header>
 

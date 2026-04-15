@@ -46,23 +46,42 @@ export function IncidentsPage() {
           <div className="page-title">INCIDENTS</div>
           <div className="page-subtitle">Capture and manage operational exceptions</div>
         </div>
-        <button className="btn btn--primary" onClick={() => navigate('/incidents/new')}>
-          + NEW INCIDENT
-        </button>
       </div>
 
-      {/* Filter tabs */}
-      <div className="flex-center gap-8" style={{ marginBottom: 16 }}>
-        {STATUS_FILTERS.map(({ label, value }) => (
-          <button
-            key={value}
-            className={`btn btn--ghost btn--sm${filter === value ? ' active' : ''}`}
-            style={filter === value ? { borderColor: 'var(--accent)', color: 'var(--accent)' } : {}}
-            onClick={() => setFilter(value)}
-          >
-            {label}
-          </button>
-        ))}
+      {/* Filter tabs + primary CTA on one row — keeps thumb travel short on
+          mobile (previously NEW INCIDENT lived top-right, filters lived below
+          on the left → fat-finger risk on a coordinator walking between zones). */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          flexWrap: 'wrap',
+          marginBottom: 16,
+        }}
+      >
+        <div className="flex-center gap-8" style={{ flex: '1 1 auto', flexWrap: 'wrap' }}>
+          {STATUS_FILTERS.map(({ label, value }) => (
+            <button
+              key={value}
+              type="button"
+              className={`btn btn--ghost btn--sm${filter === value ? ' active' : ''}`}
+              style={filter === value ? { borderColor: 'var(--accent)', color: 'var(--accent)' } : {}}
+              onClick={() => setFilter(value)}
+              aria-pressed={filter === value}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          className="btn btn--primary"
+          onClick={() => navigate('/incidents/new')}
+          style={{ flex: '0 0 auto' }}
+        >
+          + NEW INCIDENT
+        </button>
       </div>
 
       {/* Local drafts warning */}

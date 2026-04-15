@@ -116,11 +116,19 @@ html, body, #root {
   position: relative;
 }
 
-/* Blinking cursor after logo */
+/* Terminal-style cursor after logo — static by default (consistent across pages,
+   no infinite animation → Constitution Law 4). Blinks only when the user has
+   NOT requested reduced motion. */
 .app-topbar__logo::after {
   content: '_';
-  animation: blink 1.2s step-end infinite;
   opacity: 0.7;
+  margin-left: 2px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .app-topbar__logo::after {
+    animation: blink 1.2s step-end infinite;
+  }
 }
 
 .app-topbar__divider {
