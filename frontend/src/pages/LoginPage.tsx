@@ -1,16 +1,21 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/auth.store'
 
 export function LoginPage() {
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
-  const { login, isLoading, error } = useAuthStore()
+  const { user, login, isLoading, error } = useAuthStore()
   const navigate = useNavigate()
+
+  useEffect(() => {
+    if (user) navigate('/now', { replace: true })
+  }, [user, navigate])
+
+  if (user) return <Navigate to="/now" replace />
 
   const handleSubmit = async () => {
     await login(email, password)
-    // navigate on success handled by AuthGuard re-render
   }
 
   const onKey = (e: React.KeyboardEvent) => {

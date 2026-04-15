@@ -52,10 +52,18 @@ async function main() {
     )
   }
 
+  // In production, generate fresh random passwords and log them ONCE.
+  // In dev, allow hardcoded convenience creds only when explicitly opted in.
+  const isProd = process.env.NODE_ENV === 'production'
+  const allowDevDefaults = process.env.ALLOW_DEV_DEFAULT_PASSWORDS === '1'
+  const genPwd = () =>
+    require('crypto').randomBytes(9).toString('base64').replace(/[+/=]/g, '').slice(0, 12)
+  const makePwd = (hardcoded) => (isProd ? genPwd() : (allowDevDefaults ? hardcoded : genPwd()))
+
   const accounts = [
-    [adminId, 'admin@opsboard.local',   'Admin User',        'ADMIN',          'admin123'],
-    [mgrId,   'manager@opsboard.local', 'Senior Manager',    'SENIOR_MANAGER', 'manager123'],
-    [coordId, 'coord@opsboard.local',   'Field Coordinator', 'COORDINATOR',    'coord123'],
+    [adminId, 'admin@opsboard.local',   'Admin User',        'ADMIN',          makePwd('admin123')],
+    [mgrId,   'manager@opsboard.local', 'Senior Manager',    'SENIOR_MANAGER', makePwd('manager123')],
+    [coordId, 'coord@opsboard.local',   'Field Coordinator', 'COORDINATOR',    makePwd('coord123')],
   ]
   for (const [uid, email, fullName, role, pwd] of accounts) {
     const passwordHash = bcrypt.hashSync(pwd, 10)
@@ -63,6 +71,7 @@ async function main() {
       'INSERT INTO "User"(id,"organizationId",email,"passwordHash","fullName",role,"isActive") VALUES($1,$2,$3,$4,$5,$6,true)',
       [uid, orgId, email, passwordHash, fullName, role]
     )
+    console.log(`   SEEDED_CRED ${email} / ${pwd}`)
   }
 
   // Assign coordinator to first 2 services

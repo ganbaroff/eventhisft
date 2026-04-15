@@ -44,18 +44,15 @@ npm run dev
 - Output directory: dist
 - Env var: VITE_API_URL=https://YOUR_RAILWAY_URL
 
-## Default accounts (change on first login)
-- admin@opsboard.local / admin123
-- manager@opsboard.local / manager123
-- coord@opsboard.local / coord123
+## Seeded accounts
+In production, seed.js generates RANDOM passwords per account and logs them ONCE to Railway deploy logs in the form `SEEDED_CRED email / password`. Grab them from the first deploy log after a fresh seed.
+In development, set `ALLOW_DEV_DEFAULT_PASSWORDS=1` to use the legacy convenience creds (admin/manager/coord + 123). Never set this in production.
+After any seed event, the admin is expected to rotate passwords via `PATCH /auth/password`.
 
 ## What needs doing next
-1. Verify Railway deployment is running — check logs
-2. Get Railway public URL → set FRONTEND_URL env var
-3. Deploy frontend to Vercel with VITE_API_URL pointing to Railway
-4. Open app in real browser — first real test
-5. Change default passwords
-6. Run shadow test checklist: docs/shadow-test-checklist.md
+1. Real browser testing on a tablet — first human eyes
+2. Run shadow test checklist: docs/shadow-test-checklist.md
+3. Custom domain (optional — Railway gives `*.up.railway.app` by default)
 
 ## Architecture decisions
 - PgService (backend/src/modules/prisma/pg.service.ts) replaces Prisma

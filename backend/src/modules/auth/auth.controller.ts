@@ -1,7 +1,8 @@
-import { Controller, Post, Get, Patch, Body, UseGuards, Request, BadRequestException } from '@nestjs/common'
+import { Controller, Post, Get, Patch, Body, UseGuards, Request } from '@nestjs/common'
+import { Throttle } from '@nestjs/throttler'
 import { AuthService } from './auth.service'
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
-import { IsEmail, IsString } from 'class-validator'
+import { IsEmail, IsString, MinLength } from 'class-validator'
 
 class LoginDto {
   @IsEmail() email: string
@@ -12,15 +13,22 @@ class RefreshDto {
   @IsString() refreshToken: string
 }
 
+class ChangePasswordDto {
+  @IsString() currentPassword: string
+  @IsString() @MinLength(8) newPassword: string
+}
+
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
   @Post('login')
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto.email, dto.password)
   }
 
+  @Throttle({ default: { ttl: 60_000, limit: 20 } })
   @Post('refresh')
   refresh(@Body() dto: RefreshDto) {
     return this.authService.refresh(dto.refreshToken)
@@ -33,17 +41,9 @@ export class AuthController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
   @Patch('password')
-  async changePassword(
-    @Request() req: any,
-    @Body() body: { currentPassword: string; newPassword: string },
-  ) {
-    if (!body.currentPassword || !body.newPassword) {
-      throw new BadRequestException('currentPassword and newPassword are required')
-    }
-    if (body.newPassword.length < 8) {
-      throw new BadRequestException('New password must be at least 8 characters')
-    }
-    return this.authService.changePassword(req.user.sub, body.currentPassword, body.newPassword)
+  async changePassword(@Request() req: any, @Body() dto: ChangePasswordDto) {
+    return this.authService.changePassword(req.user.sub, dto.currentPassword, dto.newPassword)
   }
 }
