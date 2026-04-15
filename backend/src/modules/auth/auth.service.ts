@@ -20,7 +20,7 @@ export class AuthService {
     const valid = await bcrypt.compare(password, user.passwordHash)
     if (!valid) throw new UnauthorizedException('Invalid credentials')
 
-    return this.issueTokens(user.id, user.role)
+    return this.issueTokens(user.id, user.role, (user as any).tokenVersion ?? 0)
   }
 
   async refresh(refreshToken: string) {
@@ -28,7 +28,12 @@ export class AuthService {
       const payload = jwt.verify(refreshToken, this.config.get('JWT_REFRESH_SECRET')!) as any
       const user = await this.prisma.user.findUnique({ where: { id: payload.sub } })
       if (!user || !user.isActive) throw new UnauthorizedException()
-      return this.issueTokens(user.id, user.role)
+      // tokenVersion gate: rotated password → bumped version → old refresh rejected.
+      const currentTv = (user as any).tokenVersion ?? 0
+      if ((payload.tv ?? 0) !== currentTv) {
+        throw new UnauthorizedException('Refresh token revoked')
+      }
+      return this.issueTokens(user.id, user.role, currentTv)
     } catch {
       throw new UnauthorizedException('Invalid refresh token')
     }
@@ -43,8 +48,18 @@ export class AuthService {
     return user
   }
 
-  private issueTokens(userId: string, role: string) {
-    const payload = { sub: userId, role }
+  /** Returns current tokenVersion for a user (used by JwtStrategy to validate access tokens). */
+  async getTokenVersion(userId: string): Promise<number> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, isActive: true, tokenVersion: true } as any,
+    })
+    if (!user || !user.isActive) throw new UnauthorizedException()
+    return (user as any).tokenVersion ?? 0
+  }
+
+  private issueTokens(userId: string, role: string, tokenVersion: number) {
+    const payload = { sub: userId, role, tv: tokenVersion }
     const accessToken = this.jwtService.sign(payload)
     const refreshToken = jwt.sign(payload, this.config.get('JWT_REFRESH_SECRET')!, { expiresIn: '7d' })
     return { accessToken, refreshToken }
@@ -58,8 +73,16 @@ export class AuthService {
     if (!valid) throw new UnauthorizedException('Current password is incorrect')
 
     const hash = await bcrypt.hash(newPassword, 10)
-    await this.prisma.user.update({ where: { id: userId }, data: { passwordHash: hash } })
-    return { message: 'Password changed successfully' }
+    const newTv = ((user as any).tokenVersion ?? 0) + 1
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: hash, tokenVersion: newTv } as any,
+    })
+    // Return fresh tokens so the caller's session survives the rotation.
+    return {
+      message: 'Password changed successfully',
+      ...this.issueTokens(user.id, user.role, newTv),
+    }
   }
 
 }

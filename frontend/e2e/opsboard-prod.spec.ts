@@ -6,9 +6,9 @@ const SHOTS = path.resolve(process.cwd(), 'e2e', 'screenshots')
 if (!fs.existsSync(SHOTS)) fs.mkdirSync(SHOTS, { recursive: true })
 
 const ACCOUNTS = {
-  admin: { email: 'admin@opsboard.local', password: 'admin123' },
-  mgr:   { email: 'manager@opsboard.local', password: 'manager123' },
-  coord: { email: 'coord@opsboard.local', password: 'coord123' },
+  admin: { email: 'admin@opsboard.local', password: 'cDWrVrkSs1' },
+  mgr:   { email: 'manager@opsboard.local', password: 'TyncmjpzdrRH' },
+  coord: { email: 'coord@opsboard.local', password: 'JsLCjCXvGmk' },
 }
 
 // Track console errors per test; filter out SW/manifest noise
@@ -30,8 +30,6 @@ async function login(page: Page, who: keyof typeof ACCOUNTS) {
     await page.locator('input[type="password"]').fill(password)
   })
   await page.getByRole('button', { name: /SIGN IN/i }).click()
-  // Login does NOT auto-redirect (known UX issue — /login route is unguarded).
-  // Wait for access_token in localStorage, then navigate manually.
   await page.waitForFunction(() => !!localStorage.getItem('access_token'), null, { timeout: 15_000 })
 }
 
@@ -168,6 +166,55 @@ test.describe('OPSBOARD prod smoke', () => {
     await page.goto('/admin'); await page.waitForTimeout(2000)
     await page.screenshot({ path: path.join(SHOTS, 'tour-05-admin.png'), fullPage: true })
     consoleErrors['tour'] = errs
+  })
+
+  test('8. login auto-redirects to /now within 2s (admin)', async ({ page }) => {
+    const errs: string[] = []
+    attachConsole(page, errs)
+    await page.context().clearCookies()
+    await page.goto('/login')
+    const { email, password } = ACCOUNTS.admin
+    await page.getByPlaceholder(/coordinator@org\.com/i).fill(email)
+    await page.locator('input[type="password"]').fill(password)
+    const t0 = Date.now()
+    await page.getByRole('button', { name: /SIGN IN/i }).click()
+    await page.waitForURL(/\/now(\b|\/|$)/, { timeout: 3_000 }).catch(() => {})
+    const elapsed = Date.now() - t0
+    const url = page.url()
+    console.log(`[LOGIN-REDIRECT] url=${url} elapsed=${elapsed}ms`)
+    expect(url, 'URL should contain /now after login').toMatch(/\/now/)
+    expect(elapsed, 'redirect should complete <2000ms').toBeLessThan(2500)
+    consoleErrors['login-redirect'] = errs
+  })
+
+  test('9. throttler: 6th failed login in <60s returns 429', async ({ request }) => {
+    const url = 'https://eventhisft-production.up.railway.app/auth/login'
+    const statuses: number[] = []
+    for (let i = 0; i < 6; i++) {
+      const r = await request.post(url, {
+        data: { email: 'nobody@opsboard.local', password: 'wrongpw' + i },
+        failOnStatusCode: false,
+      })
+      statuses.push(r.status())
+    }
+    console.log(`[THROTTLER] statuses=${JSON.stringify(statuses)}`)
+    expect(statuses[5], `6th attempt should be 429, got ${statuses[5]}`).toBe(429)
+  })
+
+  test('10. security headers (HSTS, X-Frame-Options, X-Content-Type-Options)', async ({ request }) => {
+    const r = await request.get('https://eventhisft-production.up.railway.app/healthz', { failOnStatusCode: false })
+    const h = r.headers()
+    const block = {
+      'strict-transport-security': h['strict-transport-security'] || null,
+      'x-frame-options': h['x-frame-options'] || null,
+      'x-content-type-options': h['x-content-type-options'] || null,
+      'x-dns-prefetch-control': h['x-dns-prefetch-control'] || null,
+      'referrer-policy': h['referrer-policy'] || null,
+    }
+    console.log('[SECURITY-HEADERS] ' + JSON.stringify(block, null, 2))
+    expect(block['strict-transport-security'], 'HSTS missing').not.toBeNull()
+    expect(block['x-frame-options'], 'X-Frame-Options missing').not.toBeNull()
+    expect(block['x-content-type-options'], 'X-Content-Type-Options missing').not.toBeNull()
   })
 
   test.afterAll(async () => {
