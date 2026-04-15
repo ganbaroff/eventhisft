@@ -1,1 +1,0 @@
-{"statusCode":429,"code":"INTERNAL_ERROR","message":"ThrottlerException: Too Many Requests","path":"/auth/login","timestamp":"2026-04-15T13:40:11.561Z"}

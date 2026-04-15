@@ -28,9 +28,18 @@ export function ChangePasswordModal({ onClose, forced = false }: Props) {
     if (form.next !== form.confirm) { setError('New passwords do not match'); return }
     setSaving(true)
     try {
-      await authApi.changePassword(form.current, form.next)
-      // Refetch /auth/me so the store's mustChangePassword flag clears —
-      // otherwise the forced modal would immediately re-open.
+      // Backend bumps tokenVersion on successful change, which revokes every
+      // token tied to the old version — including the access token we're
+      // using to make this very request. The response body therefore carries
+      // freshly-issued tokens so the current session survives the rotation.
+      // We MUST swap them into localStorage BEFORE any follow-up call
+      // (refreshUser does GET /auth/me which would 401 with the stale token).
+      const res: any = await authApi.changePassword(form.current, form.next)
+      if (res?.accessToken)  localStorage.setItem('access_token',  res.accessToken)
+      if (res?.refreshToken) localStorage.setItem('refresh_token', res.refreshToken)
+      // Now re-fetch the user profile with the new token so the store's
+      // mustChangePassword flag clears; otherwise the forced modal would
+      // immediately re-open.
       await refreshUser()
       toast.success('Password changed successfully')
       onClose()
