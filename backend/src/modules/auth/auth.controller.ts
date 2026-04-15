@@ -46,4 +46,17 @@ export class AuthController {
   async changePassword(@Request() req: any, @Body() dto: ChangePasswordDto) {
     return this.authService.changePassword(req.user.sub, dto.currentPassword, dto.newPassword)
   }
+
+  /**
+   * Mint a short-lived SSE ticket (5 min, typ:'sse') so EventSource can
+   * connect without putting a regular access token in the URL query.
+   * Access token is required as usual in the Authorization header here —
+   * only the ticket is allowed on the SSE URL.
+   */
+  @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { ttl: 60_000, limit: 30 } })
+  @Post('sse-ticket')
+  async sseTicket(@Request() req: any) {
+    return this.authService.issueSseTicket(req.user.sub)
+  }
 }

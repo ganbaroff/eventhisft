@@ -14,21 +14,44 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       ]),
       ignoreExpiration: false,
       secretOrKey: config.get('JWT_SECRET'),
-    })
+      passReqToCallback: true,
+    } as any)
   }
 
-  async validate(payload: any) {
-    // Verify tokenVersion still matches — rejects access tokens issued before
+  async validate(req: any, payload: any) {
+    // Figure out where the token came from:
+    //   - Authorization: Bearer ... → a regular access token (no typ field)
+    //   - ?token=... in URL           → should be an SSE ticket (typ='sse')
+    const fromQuery = !!(req?.query?.token && !req?.headers?.authorization)
+    const isSseTicket = payload?.typ === 'sse'
+
+    if (fromQuery && !isSseTicket) {
+      // Regular access tokens must NEVER be accepted from the URL — they'd
+      // leak into logs and Referer. Ticket-only for query-string auth.
+      throw new UnauthorizedException('Regular access tokens cannot be used in URL')
+    }
+    if (!fromQuery && isSseTicket) {
+      // SSE tickets are scoped to EventSource and must not authorize general
+      // API calls via Authorization header.
+      throw new UnauthorizedException('SSE ticket cannot be used on this route')
+    }
+    // Further: SSE tickets are only valid on the /sse/* routes.
+    const path: string = req?.url || req?.originalUrl || ''
+    if (isSseTicket && !path.startsWith('/sse/')) {
+      throw new UnauthorizedException('SSE ticket scope is /sse/ only')
+    }
+
+    // Verify tokenVersion still matches — rejects tokens issued before
     // a password rotation / forced logout.
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { id: true, isActive: true, tokenVersion: true } as any,
+      select: { id: true, isActive: true, tokenVersion: true, role: true } as any,
     })
     if (!user || !(user as any).isActive) throw new UnauthorizedException()
     const currentTv = (user as any).tokenVersion ?? 0
     if ((payload.tv ?? 0) !== currentTv) {
       throw new UnauthorizedException('Token revoked')
     }
-    return { sub: payload.sub, role: payload.role }
+    return { sub: payload.sub, role: payload.role ?? (user as any).role }
   }
 }

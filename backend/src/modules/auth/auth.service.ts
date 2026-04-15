@@ -58,6 +58,24 @@ export class AuthService {
     return (user as any).tokenVersion ?? 0
   }
 
+  /**
+   * Short-lived ticket token for EventSource /sse/now (5 min TTL, typ:'sse').
+   * EventSource can't set Authorization header, so we pass the token in the
+   * URL query string. A regular access token in a URL would leak into
+   * Railway edge logs, Referer headers, and browser history for up to the
+   * access TTL (15 min). A dedicated ticket limits that exposure to 5 min
+   * and to SSE routes only — JwtStrategy rejects typ:'sse' anywhere else.
+   */
+  async issueSseTicket(userId: string): Promise<{ ticket: string }> {
+    const tv = await this.getTokenVersion(userId)
+    const ticket = jwt.sign(
+      { sub: userId, typ: 'sse', tv },
+      this.config.get('JWT_SECRET')!,
+      { expiresIn: '5m' },
+    )
+    return { ticket }
+  }
+
   private issueTokens(userId: string, role: string, tokenVersion: number) {
     const payload = { sub: userId, role, tv: tokenVersion }
     const accessToken = this.jwtService.sign(payload)
