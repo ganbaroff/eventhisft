@@ -16,8 +16,9 @@ async function bootstrap() {
   app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }))
   const http: any = app.getHttpAdapter().getInstance()
   if (http && typeof http.disable === 'function') http.disable('x-powered-by')
-  // Trust Railway edge proxy so throttler sees real client IP via X-Forwarded-For
-  if (http && typeof http.set === 'function') http.set('trust proxy', 1)
+  // Trust Railway edge proxies so throttler sees real client IP via X-Forwarded-For.
+  // Railway routes through multiple edge nodes — boolean true accepts the full chain.
+  if (http && typeof http.set === 'function') http.set('trust proxy', true)
 
   app.enableCors({
     origin: frontendUrl ?? 'http://localhost:5173',
