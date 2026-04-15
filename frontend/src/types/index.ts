@@ -36,6 +36,11 @@ export interface User {
   fullName: string
   role: UserRole
   isActive: boolean
+  /** Forced password rotation flag (set on seeded accounts). While true,
+   * the backend rejects all requests outside /auth/me, /auth/password,
+   * /auth/logout, /auth/sse-ticket. Frontend shows a non-dismissible
+   * ChangePasswordModal until the user changes their password. */
+  mustChangePassword?: boolean
 }
 
 export interface Service {

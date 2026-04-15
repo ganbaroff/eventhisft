@@ -42,7 +42,14 @@ export class AuthService {
   async me(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, email: true, fullName: true, role: true, isActive: true },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        role: true,
+        isActive: true,
+        mustChangePassword: true,
+      } as any,
     })
     if (!user) throw new UnauthorizedException()
     return user
@@ -94,7 +101,9 @@ export class AuthService {
     const newTv = ((user as any).tokenVersion ?? 0) + 1
     await this.prisma.user.update({
       where: { id: userId },
-      data: { passwordHash: hash, tokenVersion: newTv } as any,
+      // Clear the forced-rotation flag: once the user has changed the
+      // seeded/leaked password, the rotation gate releases.
+      data: { passwordHash: hash, tokenVersion: newTv, mustChangePassword: false } as any,
     })
     // Return fresh tokens so the caller's session survives the rotation.
     return {

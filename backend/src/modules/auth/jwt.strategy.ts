@@ -45,13 +45,36 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     // a password rotation / forced logout.
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { id: true, isActive: true, tokenVersion: true, role: true } as any,
+      select: {
+        id: true,
+        isActive: true,
+        tokenVersion: true,
+        role: true,
+        mustChangePassword: true,
+      } as any,
     })
     if (!user || !(user as any).isActive) throw new UnauthorizedException()
     const currentTv = (user as any).tokenVersion ?? 0
     if ((payload.tv ?? 0) !== currentTv) {
       throw new UnauthorizedException('Token revoked')
     }
+
+    // Forced password rotation gate for seeded accounts. Until the user
+    // changes their password, only a narrow allow-list of endpoints responds.
+    // The frontend reads mustChangePassword from /auth/me and presents a
+    // modal that cannot be dismissed until PATCH /auth/password succeeds.
+    if ((user as any).mustChangePassword) {
+      const allow = [
+        '/auth/me',
+        '/auth/password',
+        '/auth/logout',
+        '/auth/sse-ticket',
+      ]
+      if (!allow.some(p => path.startsWith(p))) {
+        throw new UnauthorizedException('Password rotation required')
+      }
+    }
+
     return { sub: payload.sub, role: payload.role ?? (user as any).role }
   }
 }

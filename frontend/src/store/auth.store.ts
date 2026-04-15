@@ -10,6 +10,8 @@ interface AuthState {
   login: (email: string, password: string) => Promise<void>
   logout: () => void
   loadContext: () => Promise<void>
+  /** Refetch /auth/me — used after changePassword to clear mustChangePassword in the store. */
+  refreshUser: () => Promise<void>
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -43,6 +45,15 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ context })
     } catch {
       // Context load failure is non-fatal — app still works
+    }
+  },
+
+  refreshUser: async () => {
+    try {
+      const user = await authApi.me()
+      set({ user })
+    } catch {
+      // If me() fails (e.g. token expired), logout handler elsewhere picks it up.
     }
   },
 }))

@@ -162,7 +162,12 @@ function AppShell() {
         </ErrorBoundary>
       </main>
 
-      {showPwd && <ChangePasswordModal onClose={() => setShowPwd(false)} />}
+      {(showPwd || user?.mustChangePassword) && (
+        <ChangePasswordModal
+          onClose={() => setShowPwd(false)}
+          forced={!!user?.mustChangePassword}
+        />
+      )}
       <ToastContainer />
     </div>
   )

@@ -1,16 +1,25 @@
 import { useState } from 'react'
 import { authApi } from '../../api/client'
 import { toast } from '../../store/toast.store'
+import { useAuthStore } from '../../store/auth.store'
 
-interface Props { onClose: () => void }
+interface Props {
+  onClose: () => void
+  /** When true, modal cannot be dismissed until password is successfully
+   * changed — used for seeded accounts that carry mustChangePassword=true. */
+  forced?: boolean
+}
 
-export function ChangePasswordModal({ onClose }: Props) {
+export function ChangePasswordModal({ onClose, forced = false }: Props) {
   const [form, setForm] = useState({ current: '', next: '', confirm: '' })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const refreshUser = useAuthStore(s => s.refreshUser)
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm(p => ({ ...p, [k]: e.target.value }))
+
+  const safeClose = () => { if (!forced) onClose() }
 
   const handleSave = async () => {
     setError('')
@@ -20,6 +29,9 @@ export function ChangePasswordModal({ onClose }: Props) {
     setSaving(true)
     try {
       await authApi.changePassword(form.current, form.next)
+      // Refetch /auth/me so the store's mustChangePassword flag clears —
+      // otherwise the forced modal would immediately re-open.
+      await refreshUser()
       toast.success('Password changed successfully')
       onClose()
     } catch (e: any) {
@@ -32,12 +44,26 @@ export function ChangePasswordModal({ onClose }: Props) {
   return (
     <div
       className="modal-overlay"
-      onClick={e => e.target === e.currentTarget && onClose()}
+      onClick={e => { if (e.target === e.currentTarget) safeClose() }}
     >
       <div className="modal-card">
+        {forced && (
+          <div
+            className="error-msg"
+            style={{ color: 'var(--accent)', borderColor: 'rgba(0,212,255,0.25)', background: 'rgba(0,212,255,0.05)' }}
+          >
+            Your account uses a default password. Please set a new one before continuing.
+          </div>
+        )}
         <div className="flex-center">
           <div className="modal-title">CHANGE PASSWORD</div>
-          <button className="btn btn--ghost btn--sm ml-auto" onClick={onClose}>✕</button>
+          {!forced && (
+            <button
+              className="btn btn--ghost btn--sm ml-auto"
+              onClick={safeClose}
+              aria-label="Close"
+            >✕</button>
+          )}
         </div>
 
         {error && (
@@ -73,8 +99,11 @@ export function ChangePasswordModal({ onClose }: Props) {
         </div>
 
         <div className="flex-center gap-8" style={{ justifyContent: 'flex-end' }}>
-          <button className="btn btn--ghost" onClick={onClose}>CANCEL</button>
+          {!forced && (
+            <button type="button" className="btn btn--ghost" onClick={safeClose}>CANCEL</button>
+          )}
           <button
+            type="button"
             className="btn btn--primary"
             onClick={handleSave}
             disabled={saving || !form.current || !form.next || !form.confirm}

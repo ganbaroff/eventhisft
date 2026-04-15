@@ -67,11 +67,14 @@ async function main() {
   ]
   for (const [uid, email, fullName, role, pwd] of accounts) {
     const passwordHash = bcrypt.hashSync(pwd, 10)
+    // mustChangePassword=true: seeded creds are logged once to the deploy
+    // log (see SEEDED_CRED line below). Forcing rotation on first login
+    // closes that exposure window automatically.
     await pool.query(
-      'INSERT INTO "User"(id,"organizationId",email,"passwordHash","fullName",role,"isActive") VALUES($1,$2,$3,$4,$5,$6,true)',
+      'INSERT INTO "User"(id,"organizationId",email,"passwordHash","fullName",role,"isActive","mustChangePassword") VALUES($1,$2,$3,$4,$5,$6,true,true)',
       [uid, orgId, email, passwordHash, fullName, role]
     )
-    console.log(`   SEEDED_CRED ${email} / ${pwd}`)
+    console.log(`   SEEDED_CRED ${email} / ${pwd}  (must change on first login)`)
   }
 
   // Assign coordinator to first 2 services
