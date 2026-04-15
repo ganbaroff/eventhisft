@@ -1,0 +1,37 @@
+{"version":8,"type":"context-options","origin":"library","browserName":"","playwrightVersion":"1.59.1","options":{},"platform":"win32","wallTime":1776260411010,"monotonicTime":141362.891,"sdkLanguage":"javascript","contextId":"request-context@90bbd6144b58130dd96f7dc729b6b038","title":"opsboard-prod.spec.ts:323 › Atlas 2026-04-15 deltas › A4. tokenVersion revokes old access token after password change"}
+{"type":"before","callId":"call@5","startTime":141365.153,"class":"APIRequestContext","method":"fetch","params":{"url":"https://eventhisft-production.up.railway.app/auth/login","method":"POST","jsonData":"{\"email\":\"admin@opsboard.local\",\"password\":\"cDWrVrkSs1\"}","timeout":0,"failOnStatusCode":false},"stepId":"pw:api@26"}
+{"type":"log","callId":"call@5","time":141370.986,"message":"→ POST https://eventhisft-production.up.railway.app/auth/login"}
+{"type":"log","callId":"call@5","time":141371.006,"message":"  user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.7727.15 Safari/537.36"}
+{"type":"log","callId":"call@5","time":141371.011,"message":"  accept: */*"}
+{"type":"log","callId":"call@5","time":141371.015,"message":"  accept-encoding: gzip,deflate,br"}
+{"type":"log","callId":"call@5","time":141371.018,"message":"  content-type: application/json"}
+{"type":"log","callId":"call@5","time":141371.022,"message":"  content-length: 56"}
+{"type":"log","callId":"call@5","time":141750.086,"message":"← 429 "}
+{"type":"log","callId":"call@5","time":141750.124,"message":"  connection: keep-alive"}
+{"type":"log","callId":"call@5","time":141750.135,"message":"  content-length: 152"}
+{"type":"log","callId":"call@5","time":141750.147,"message":"  access-control-allow-credentials: true"}
+{"type":"log","callId":"call@5","time":141750.156,"message":"  access-control-allow-origin: https://frontend-production-acba.up.railway.app"}
+{"type":"log","callId":"call@5","time":141750.162,"message":"  x-railway-cdn-edge: fastly/cache-fra-eddf8230136-FRA"}
+{"type":"log","callId":"call@5","time":141750.167,"message":"  content-type: application/json; charset=utf-8"}
+{"type":"log","callId":"call@5","time":141750.171,"message":"  cross-origin-opener-policy: same-origin"}
+{"type":"log","callId":"call@5","time":141750.174,"message":"  cross-origin-resource-policy: same-origin"}
+{"type":"log","callId":"call@5","time":141750.179,"message":"  date: Wed, 15 Apr 2026 13:40:11 GMT"}
+{"type":"log","callId":"call@5","time":141750.183,"message":"  etag: W/\"98-I+fVQUfUtd5HXkL5zk6gL4D+qaA\""}
+{"type":"log","callId":"call@5","time":141750.187,"message":"  origin-agent-cluster: ?1"}
+{"type":"log","callId":"call@5","time":141750.19,"message":"  referrer-policy: no-referrer"}
+{"type":"log","callId":"call@5","time":141750.194,"message":"  retry-after: 8"}
+{"type":"log","callId":"call@5","time":141750.198,"message":"  server: railway-edge"}
+{"type":"log","callId":"call@5","time":141750.202,"message":"  strict-transport-security: max-age=31536000; includeSubDomains"}
+{"type":"log","callId":"call@5","time":141750.205,"message":"  vary: Origin"}
+{"type":"log","callId":"call@5","time":141750.209,"message":"  x-content-type-options: nosniff"}
+{"type":"log","callId":"call@5","time":141750.213,"message":"  x-dns-prefetch-control: off"}
+{"type":"log","callId":"call@5","time":141750.216,"message":"  x-download-options: noopen"}
+{"type":"log","callId":"call@5","time":141750.22,"message":"  x-frame-options: SAMEORIGIN"}
+{"type":"log","callId":"call@5","time":141750.223,"message":"  x-permitted-cross-domain-policies: none"}
+{"type":"log","callId":"call@5","time":141750.227,"message":"  x-railway-edge: railway/europe-west4-drams3a"}
+{"type":"log","callId":"call@5","time":141750.231,"message":"  x-railway-request-id: 0QcGHCkgRUqHven2nTga3g"}
+{"type":"log","callId":"call@5","time":141750.235,"message":"  x-xss-protection: 0"}
+{"type":"log","callId":"call@5","time":141750.239,"message":"  x-cache: MISS"}
+{"type":"log","callId":"call@5","time":141750.244,"message":"  x-cache-hits: 0"}
+{"type":"log","callId":"call@5","time":141750.248,"message":"  x-served-by: cache-fra-eddf8230136-FRA"}
+{"type":"after","callId":"call@5","endTime":141751.651,"result":{"response":{"url":"https://eventhisft-production.up.railway.app/auth/login","status":429,"statusText":"","headers":[{"name":"Connection","value":"keep-alive"},{"name":"Content-Length","value":"152"},{"name":"access-control-allow-credentials","value":"true"},{"name":"access-control-allow-origin","value":"https://frontend-production-acba.up.railway.app"},{"name":"x-railway-cdn-edge","value":"fastly/cache-fra-eddf8230136-FRA"},{"name":"content-type","value":"application/json; charset=utf-8"},{"name":"cross-origin-opener-policy","value":"same-origin"},{"name":"cross-origin-resource-policy","value":"same-origin"},{"name":"date","value":"Wed, 15 Apr 2026 13:40:11 GMT"},{"name":"etag","value":"W/\"98-I+fVQUfUtd5HXkL5zk6gL4D+qaA\""},{"name":"origin-agent-cluster","value":"?1"},{"name":"referrer-policy","value":"no-referrer"},{"name":"retry-after","value":"8"},{"name":"server","value":"railway-edge"},{"name":"strict-transport-security","value":"max-age=31536000; includeSubDomains"},{"name":"vary","value":"Origin"},{"name":"x-content-type-options","value":"nosniff"},{"name":"x-dns-prefetch-control","value":"off"},{"name":"x-download-options","value":"noopen"},{"name":"x-frame-options","value":"SAMEORIGIN"},{"name":"x-permitted-cross-domain-policies","value":"none"},{"name":"x-railway-edge","value":"railway/europe-west4-drams3a"},{"name":"x-railway-request-id","value":"0QcGHCkgRUqHven2nTga3g"},{"name":"x-xss-protection","value":"0"},{"name":"x-cache","value":"MISS"},{"name":"x-cache-hits","value":"0"},{"name":"x-served-by","value":"cache-fra-eddf8230136-FRA"}],"fetchUid":"e9346eae047517b217879e58a5392e53"}}}

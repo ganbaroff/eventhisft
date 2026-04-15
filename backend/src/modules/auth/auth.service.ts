@@ -24,19 +24,21 @@ export class AuthService {
   }
 
   async refresh(refreshToken: string) {
+    let payload: any
     try {
-      const payload = jwt.verify(refreshToken, this.config.get('JWT_REFRESH_SECRET')!) as any
-      const user = await this.prisma.user.findUnique({ where: { id: payload.sub } })
-      if (!user || !user.isActive) throw new UnauthorizedException()
-      // tokenVersion gate: rotated password → bumped version → old refresh rejected.
-      const currentTv = (user as any).tokenVersion ?? 0
-      if ((payload.tv ?? 0) !== currentTv) {
-        throw new UnauthorizedException('Refresh token revoked')
-      }
-      return this.issueTokens(user.id, user.role, currentTv)
+      payload = jwt.verify(refreshToken, this.config.get('JWT_REFRESH_SECRET')!)
     } catch {
       throw new UnauthorizedException('Invalid refresh token')
     }
+    const user = await this.prisma.user.findUnique({ where: { id: payload.sub } })
+    if (!user || !user.isActive) throw new UnauthorizedException('Invalid refresh token')
+    // tokenVersion gate: rotated password → bumped version → old refresh rejected.
+    // This must surface distinctly — the UX knows "log in again" vs "something weird".
+    const currentTv = (user as any).tokenVersion ?? 0
+    if ((payload.tv ?? 0) !== currentTv) {
+      throw new UnauthorizedException('Refresh token revoked')
+    }
+    return this.issueTokens(user.id, user.role, currentTv)
   }
 
   async me(userId: string) {

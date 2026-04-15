@@ -63,14 +63,19 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     // changes their password, only a narrow allow-list of endpoints responds.
     // The frontend reads mustChangePassword from /auth/me and presents a
     // modal that cannot be dismissed until PATCH /auth/password succeeds.
+    //
+    // Exact path matching (not startsWith). startsWith would let a path
+    // like /auth/melicious through because it "starts with" /auth/me.
+    // We strip trailing query string before comparing.
     if ((user as any).mustChangePassword) {
-      const allow = [
+      const bare = path.split('?')[0].replace(/\/+$/, '')
+      const allow = new Set([
         '/auth/me',
         '/auth/password',
         '/auth/logout',
         '/auth/sse-ticket',
-      ]
-      if (!allow.some(p => path.startsWith(p))) {
+      ])
+      if (!allow.has(bare)) {
         throw new UnauthorizedException('Password rotation required')
       }
     }

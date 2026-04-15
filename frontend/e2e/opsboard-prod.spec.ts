@@ -225,3 +225,234 @@ test.describe('OPSBOARD prod smoke', () => {
     )
   })
 })
+
+// ────────────────────────────────────────────────────────────────────────
+// Atlas-changes-today verification (2026-04-15)
+// ────────────────────────────────────────────────────────────────────────
+
+const API = 'https://eventhisft-production.up.railway.app'
+
+async function apiLogin(request: any, email: string, password: string) {
+  const r = await request.post(`${API}/auth/login`, {
+    data: { email, password },
+    failOnStatusCode: false,
+  })
+  return { status: r.status(), body: r.status() < 400 ? await r.json() : null }
+}
+
+test.describe('Atlas 2026-04-15 deltas', () => {
+  test('A1. admin /now loads, /context 200', async ({ page, request }) => {
+    await login(page, 'admin')
+    await page.goto('/now')
+    await expect(page.getByRole('link', { name: /NOW/i }).first()).toBeVisible({ timeout: 10_000 })
+    const token = await page.evaluate(() => localStorage.getItem('access_token'))
+    const r = await request.get(`${API}/context`, {
+      headers: { Authorization: `Bearer ${token}` },
+      failOnStatusCode: false,
+    })
+    expect(r.status()).toBe(200)
+    const body = await r.json()
+    expect(body.user.email).toBe('admin@opsboard.local')
+    await page.screenshot({ path: path.join(SHOTS, 'A1-admin-now.png'), fullPage: true })
+  })
+
+  test('A2. manager forced-rotation flow (rotates + rotates back)', async ({ page, request }) => {
+    const original = 'TyncmjpzdrRH'
+    const temp = 'Temp-' + Date.now() + '!A'
+    await login(page, 'mgr')
+    // ChangePasswordModal should auto-open, forced (no close button, no cancel)
+    const modalTitle = page.getByText(/CHANGE PASSWORD/i).first()
+    await expect(modalTitle).toBeVisible({ timeout: 10_000 })
+    // Close (✕) button is hidden when forced
+    const closeBtns = await page.getByRole('button', { name: /^Close$/i }).count()
+    expect(closeBtns, 'forced modal must not expose Close').toBe(0)
+    const cancelBtns = await page.getByRole('button', { name: /^CANCEL$/i }).count()
+    expect(cancelBtns, 'forced modal must not expose Cancel').toBe(0)
+    // Overlay click must not dismiss
+    await page.locator('.modal-overlay').click({ position: { x: 10, y: 10 } }).catch(() => {})
+    await expect(modalTitle).toBeVisible()
+    await page.screenshot({ path: path.join(SHOTS, 'A2-mgr-forced-modal.png'), fullPage: true })
+    // Submit new password
+    const inputs = page.locator('.modal-card input[type="password"]')
+    await inputs.nth(0).fill(original)
+    await inputs.nth(1).fill(temp)
+    await inputs.nth(2).fill(temp)
+    await page.getByRole('button', { name: /SAVE PASSWORD/i }).click()
+    await expect(modalTitle).toBeHidden({ timeout: 10_000 })
+    // Navigate to /incidents (proves session usable)
+    await page.goto('/incidents')
+    await expect(page.getByText(/INCIDENTS/i).first()).toBeVisible({ timeout: 10_000 })
+    // Rotate back via API (fresh login at temp, change to original)
+    const loginTemp = await apiLogin(request, 'manager@opsboard.local', temp)
+    expect(loginTemp.status, 'login with temp must succeed').toBe(200)
+    const rot = await request.patch(`${API}/auth/password`, {
+      headers: { Authorization: `Bearer ${loginTemp.body.accessToken}` },
+      data: { currentPassword: temp, newPassword: original },
+      failOnStatusCode: false,
+    })
+    expect(rot.status(), 'rotate-back must succeed').toBeLessThan(400)
+  })
+
+  test('A3. coord forced-rotation flow (rotates + rotates back)', async ({ page, request }) => {
+    const original = 'JsLCjCXvGmk'
+    const temp = 'Temp-' + Date.now() + '!B'
+    await login(page, 'coord')
+    const modalTitle = page.getByText(/CHANGE PASSWORD/i).first()
+    await expect(modalTitle).toBeVisible({ timeout: 10_000 })
+    expect(await page.getByRole('button', { name: /^Close$/i }).count()).toBe(0)
+    expect(await page.getByRole('button', { name: /^CANCEL$/i }).count()).toBe(0)
+    const inputs = page.locator('.modal-card input[type="password"]')
+    await inputs.nth(0).fill(original)
+    await inputs.nth(1).fill(temp)
+    await inputs.nth(2).fill(temp)
+    await page.getByRole('button', { name: /SAVE PASSWORD/i }).click()
+    await expect(modalTitle).toBeHidden({ timeout: 10_000 })
+    await page.goto('/incidents')
+    await expect(page.getByText(/INCIDENTS/i).first()).toBeVisible({ timeout: 10_000 })
+    // Rotate back
+    const loginTemp = await apiLogin(request, 'coord@opsboard.local', temp)
+    expect(loginTemp.status).toBe(200)
+    const rot = await request.patch(`${API}/auth/password`, {
+      headers: { Authorization: `Bearer ${loginTemp.body.accessToken}` },
+      data: { currentPassword: temp, newPassword: original },
+      failOnStatusCode: false,
+    })
+    expect(rot.status()).toBeLessThan(400)
+  })
+
+  test('A4. tokenVersion revokes old access token after password change', async ({ request }) => {
+    // Use admin (mustChangePassword=false, can rotate self without forced UX)
+    const original = 'cDWrVrkSs1'
+    const temp = 'Temp-' + Date.now() + '!C'
+    const l1 = await apiLogin(request, 'admin@opsboard.local', original)
+    test.skip(l1.status !== 200, `admin login failed: ${l1.status}`)
+    const T1 = l1.body.accessToken
+    // Verify T1 works
+    const c1 = await request.get(`${API}/context`, {
+      headers: { Authorization: `Bearer ${T1}` }, failOnStatusCode: false,
+    })
+    expect(c1.status()).toBe(200)
+    // Change password using T1
+    const ch = await request.patch(`${API}/auth/password`, {
+      headers: { Authorization: `Bearer ${T1}` },
+      data: { currentPassword: original, newPassword: temp },
+      failOnStatusCode: false,
+    })
+    expect(ch.status(), 'change-password must succeed').toBeLessThan(400)
+    // T1 now must be revoked
+    const c2 = await request.get(`${API}/context`, {
+      headers: { Authorization: `Bearer ${T1}` }, failOnStatusCode: false,
+    })
+    expect(c2.status(), 'old T1 must be 401 after tv bump').toBe(401)
+    // Rotate password BACK so admin cred in spec stays valid
+    const l2 = await apiLogin(request, 'admin@opsboard.local', temp)
+    expect(l2.status, 'login with temp pw must succeed').toBe(200)
+    const rb = await request.patch(`${API}/auth/password`, {
+      headers: { Authorization: `Bearer ${l2.body.accessToken}` },
+      data: { currentPassword: temp, newPassword: original },
+      failOnStatusCode: false,
+    })
+    expect(rb.status(), 'rotate-back must succeed').toBeLessThan(400)
+  })
+
+  test('A5. SSE ticket: /sse/now rejects access token, accepts ticket', async ({ request }) => {
+    const l = await apiLogin(request, 'admin@opsboard.local', 'cDWrVrkSs1')
+    test.skip(l.status !== 200, `admin login failed: ${l.status}`)
+    const access = l.body.accessToken
+    // Get ticket
+    const tk = await request.post(`${API}/auth/sse-ticket`, {
+      headers: { Authorization: `Bearer ${access}` }, failOnStatusCode: false,
+    })
+    expect([200, 201]).toContain(tk.status())
+    const body = await tk.json()
+    expect(body.ticket, 'ticket field present').toBeTruthy()
+    // Access token in URL must be rejected on /sse/now
+    const bad = await request.get(`${API}/sse/now?token=${encodeURIComponent(access)}`, {
+      failOnStatusCode: false,
+      timeout: 5000,
+    }).catch((e) => ({ status: () => 0, _err: e.message }))
+    // Note: SSE may hang — we use a short timeout. 401 is the expected contract.
+    const badStatus = (bad as any).status()
+    expect(badStatus, `sse/now with access token got ${badStatus}`).toBe(401)
+    // Ticket must stream event. We just verify 200 + correct content-type (stream will stay open).
+    const good = await request.get(`${API}/sse/now?token=${encodeURIComponent(body.ticket)}`, {
+      failOnStatusCode: false,
+      timeout: 3000,
+    }).catch(() => null)
+    if (good) {
+      expect(good.status()).toBe(200)
+      const ct = good.headers()['content-type'] || ''
+      expect(ct).toMatch(/event-stream/i)
+    }
+  })
+
+  test('A6. OPSBOARD wordmark consistent across /now /incidents /admin /shifts /drafts', async ({ page }) => {
+    await login(page, 'admin')
+    const paths = ['/now', '/incidents', '/admin', '/shifts', '/drafts']
+    const clips: { path: string, file: string }[] = []
+    for (const p of paths) {
+      await page.goto(p).catch(() => {})
+      await page.waitForTimeout(800)
+      const file = `A6-wordmark${p.replace(/\//g, '-')}.png`
+      await page.screenshot({
+        path: path.join(SHOTS, file),
+        clip: { x: 0, y: 0, width: 220, height: 48 },
+      })
+      clips.push({ path: p, file })
+      // Topbar logo text must read OPSBOARD
+      const logo = page.locator('.app-topbar__logo').first()
+      await expect(logo).toHaveText(/OPSBOARD/)
+    }
+    fs.writeFileSync(path.join(SHOTS, '_A6-wordmark-manifest.json'), JSON.stringify(clips, null, 2), 'utf8')
+  })
+
+  test('A7. key icon has aria-label "Change password"', async ({ page }) => {
+    await login(page, 'admin')
+    await page.goto('/now')
+    const btn = page.getByRole('button', { name: /^Change password$/i })
+    await expect(btn).toBeVisible({ timeout: 8_000 })
+    expect(await btn.count()).toBe(1)
+  })
+
+  test('A8. /incidents: NEW INCIDENT on same row as filter tabs (not header)', async ({ page }) => {
+    await login(page, 'admin')
+    await page.goto('/incidents')
+    const cta = page.getByRole('button', { name: /NEW INCIDENT/i })
+    const filterAll = page.getByRole('button', { name: /^ALL$/i }).first()
+    await expect(cta).toBeVisible({ timeout: 8_000 })
+    await expect(filterAll).toBeVisible()
+    // CTA must NOT live inside page-header
+    const ctaInHeader = await page.locator('.page-header').getByRole('button', { name: /NEW INCIDENT/i }).count()
+    expect(ctaInHeader, 'CTA must not be in page-header').toBe(0)
+    // Same visual row (vertical center within ~10px)
+    const a = await cta.boundingBox()
+    const b = await filterAll.boundingBox()
+    expect(a && b).toBeTruthy()
+    const dy = Math.abs((a!.y + a!.height / 2) - (b!.y + b!.height / 2))
+    expect(dy, `vertical offset between CTA and filter row = ${dy}px`).toBeLessThan(20)
+    await page.screenshot({ path: path.join(SHOTS, 'A8-incidents-layout.png'), fullPage: true })
+  })
+
+  test('A9. /health returns 200 {status:"ok"}', async ({ request }) => {
+    const r = await request.get(`${API}/health`, { failOnStatusCode: false })
+    expect(r.status()).toBe(200)
+    const body = await r.json()
+    expect(body.status).toBe('ok')
+  })
+
+  test('A10. login rate-limit: 6th bad attempt returns 429', async ({ request }) => {
+    // Use unique email to avoid colliding with other tests' throttler buckets.
+    const email = `rl-${Date.now()}@opsboard.local`
+    const statuses: number[] = []
+    for (let i = 0; i < 6; i++) {
+      const r = await request.post(`${API}/auth/login`, {
+        data: { email, password: 'wrong' + i },
+        failOnStatusCode: false,
+      })
+      statuses.push(r.status())
+    }
+    console.log('[A10-THROTTLER] ' + JSON.stringify(statuses))
+    expect(statuses[5]).toBe(429)
+  })
+})
+

@@ -11,10 +11,19 @@ export class PgService implements OnModuleInit, OnModuleDestroy {
   private pool: Pool
 
   async onModuleInit() {
+    const url = process.env.DATABASE_URL
+    if (!url) {
+      // In production, silently falling back to localhost would mask a
+      // misconfigured Railway service. Fail loudly instead.
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('DATABASE_URL is required in production')
+      }
+      // In dev, still point at localhost but log that we're doing it so no
+      // one thinks they're talking to the real DB by accident.
+      this.logger.warn('DATABASE_URL unset — falling back to local dev Postgres at 127.0.0.1:5432')
+    }
     this.pool = new Pool({
-      connectionString:
-        process.env.DATABASE_URL ??
-        'postgresql://opsboard:opsboard123@localhost:5432/opsboard',
+      connectionString: url ?? 'postgresql://opsboard:opsboard123@127.0.0.1:5432/opsboard',
     })
     // Verify connection
     const client = await this.pool.connect()
